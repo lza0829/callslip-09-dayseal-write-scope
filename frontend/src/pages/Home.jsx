@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import { GateChips } from '../components/GateBanner'
 
 export default function Home() {
   const [o, setO] = useState(null)
@@ -17,7 +18,8 @@ export default function Home() {
         <p className="eyebrow">网点队列物化</p>
         <h1>叫号条</h1>
         <p className="lede">
-          营业日 {o.营业日} · {o.已封口 ? '已封口' : '营业中'}。取号入队，窗口叫号推进，过号可回收重叫，当日封口后禁写。
+          营业日 {o.营业日} · {o.已封口 ? '已封口' : '营业中'}。取号入队，窗口叫号推进，过号可回收重叫；
+          封口后当日号牌全日禁写（发号、叫号、过号、办结与号段游标推进），本总览与列表只读可查。
         </p>
       </header>
       <div className="stat-grid">
@@ -25,6 +27,10 @@ export default function Home() {
           <div className="stat" key={k}><span>{k}</span><strong>{v}</strong></div>
         ))}
       </div>
+      <section className="panel">
+        <h2>当日写闸 · {o.写闸?.口径}{o.已封口 ? ' · 已关闭' : ' · 开放'}</h2>
+        <GateChips gate={o.写闸} />
+      </section>
       <section className="panel">
         <h2>窗口现况</h2>
         <ul className="plain">

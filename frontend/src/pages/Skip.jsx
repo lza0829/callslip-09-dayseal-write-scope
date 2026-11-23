@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import { GateBanner, useSealGate } from '../components/GateBanner'
 
 export default function Skip() {
   const [skipped, setSkipped] = useState([])
   const [wins, setWins] = useState([])
   const [wid, setWid] = useState('')
   const [err, setErr] = useState('')
+  const { sealed, reload: reloadGate } = useSealGate()
   const load = async () => {
     try {
       const [t, w] = await Promise.all([api.tickets('过号'), api.windows()])
@@ -17,19 +19,20 @@ export default function Skip() {
   useEffect(() => { load() }, [])
   const onRecall = async (id) => {
     setErr('')
-    try { await api.recall(id, Number(wid)); load() } catch (e) { setErr(e.message) }
+    try { await api.recall(id, Number(wid)); load() } catch (e) { setErr(e.message); reloadGate() }
   }
   const onVoid = async (id) => {
     setErr('')
-    try { await api.voidTicket(id); load() } catch (e) { setErr(e.message) }
+    try { await api.voidTicket(id); load() } catch (e) { setErr(e.message); reloadGate() }
   }
   return (
     <div className="page">
       <header className="hero">
         <p className="eyebrow">回收命运</p>
         <h1>过号重叫</h1>
-        <p className="lede">过号可重叫回窗办理，或作废另取。</p>
+        <p className="lede">过号可重叫回窗办理，或作废另取。封口后过号与作废写口同步关闭。</p>
       </header>
+      <GateBanner sealed={sealed} />
       <section className="panel">
         <div className="form row">
           <label>重叫窗口
@@ -46,8 +49,8 @@ export default function Skip() {
               <div className="no">{t.号牌}</div>
               <div className="meta">{t.业务种类} · {t.状态}</div>
               <div className="actions">
-                <button type="button" onClick={() => onRecall(t.id)}>重叫</button>
-                <button type="button" className="danger" onClick={() => onVoid(t.id)}>作废</button>
+                <button type="button" onClick={() => onRecall(t.id)} disabled={sealed}>重叫</button>
+                <button type="button" className="danger" onClick={() => onVoid(t.id)} disabled={sealed}>作废</button>
               </div>
             </div>
           ))}

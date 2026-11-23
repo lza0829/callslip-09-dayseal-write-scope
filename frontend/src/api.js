@@ -30,6 +30,7 @@ export const api = {
   finish: (id) => req(`/号牌/${id}/办结`, { method: 'POST', body: '{}' }),
   voidTicket: (id) => req(`/号牌/${id}/作废`, { method: 'POST', body: '{}' }),
   sealInfo: () => req('/日切'),
+  sealEvents: () => req('/日切/事件'),
   seal: (强制 = false) => req('/日切/封口', { method: 'POST', body: JSON.stringify({ 强制 }) }),
   unseal: () => req('/日切/解封', { method: 'POST', body: '{}' }),
   roll: (营业日) => req('/日切/切日', { method: 'POST', body: JSON.stringify({ 营业日 }) }),

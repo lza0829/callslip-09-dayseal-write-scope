@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import { GateBanner, useSealGate } from '../components/GateBanner'
 
 export default function Take() {
   const [kinds, setKinds] = useState([])
   const [kid, setKid] = useState('')
   const [slip, setSlip] = useState(null)
   const [err, setErr] = useState('')
+  const { sealed, reload: reloadGate } = useSealGate()
   const load = () => api.kinds().then(ks => {
     setKinds(ks.filter(k => k.启用))
     if (!kid && ks.length) setKid(String(ks.find(k => k.启用)?.id || ''))
@@ -17,15 +19,16 @@ export default function Take() {
       const t = await api.take(Number(kid))
       setSlip(t)
       load()
-    } catch (e) { setErr(e.message) }
+    } catch (e) { setErr(e.message); reloadGate() }
   }
   return (
     <div className="page">
       <header className="hero">
         <p className="eyebrow">发号入队</p>
         <h1>取号</h1>
-        <p className="lede">按业务种类发放当日号牌，写入等候队列。</p>
+        <p className="lede">按业务种类发放当日号牌，写入等候队列。封口后发号闸关闭，号段游标同步冻结。</p>
       </header>
+      <GateBanner sealed={sealed} />
       <section className="panel">
         <div className="form row">
           <label>业务种类
@@ -33,7 +36,7 @@ export default function Take() {
               {kinds.map(k => <option key={k.id} value={k.id}>{k.名称}（{k.前缀}）</option>)}
             </select>
           </label>
-          <button type="button" onClick={onTake} disabled={!kid}>取号</button>
+          <button type="button" onClick={onTake} disabled={!kid || sealed}>取号</button>
         </div>
         {err && <p className="err">{err}</p>}
         {slip && (

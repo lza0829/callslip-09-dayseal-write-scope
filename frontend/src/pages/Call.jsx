@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import { GateBanner, useSealGate } from '../components/GateBanner'
 
 export default function Call() {
   const [wins, setWins] = useState([])
@@ -9,6 +10,7 @@ export default function Call() {
   const [events, setEvents] = useState([])
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
+  const { sealed, reload: reloadGate } = useSealGate()
   const load = async () => {
     try {
       const [w, k, e] = await Promise.all([api.windows(), api.kinds(), api.events()])
@@ -25,15 +27,15 @@ export default function Call() {
       const t = await api.call(Number(wid), kid ? Number(kid) : null)
       setMsg(`已叫 ${t.号牌}，窗口 ${t.窗口}`)
       load()
-    } catch (ex) { setErr(ex.message) }
+    } catch (ex) { setErr(ex.message); reloadGate() }
   }
   const onFinish = async (id) => {
     setErr('')
-    try { await api.finish(id); load() } catch (ex) { setErr(ex.message) }
+    try { await api.finish(id); load() } catch (ex) { setErr(ex.message); reloadGate() }
   }
   const onSkip = async (id) => {
     setErr('')
-    try { await api.skip(id); load() } catch (ex) { setErr(ex.message) }
+    try { await api.skip(id); load() } catch (ex) { setErr(ex.message); reloadGate() }
   }
   const current = wins.find(w => String(w.id) === String(wid))?.当前号
   return (
@@ -41,8 +43,9 @@ export default function Call() {
       <header className="hero">
         <p className="eyebrow">窗口推进</p>
         <h1>叫号</h1>
-        <p className="lede">选择窗口叫下一等候号，占窗办理，可办结或过号。</p>
+        <p className="lede">选择窗口叫下一等候号，占窗办理，可办结或过号。封口后叫号闸与办结写口同步关闭。</p>
       </header>
+      <GateBanner sealed={sealed} />
       <section className="panel">
         <div className="form row">
           <label>窗口
@@ -56,7 +59,7 @@ export default function Call() {
               {kinds.map(k => <option key={k.id} value={k.id}>{k.名称}</option>)}
             </select>
           </label>
-          <button type="button" onClick={onCall}>叫下一号</button>
+          <button type="button" onClick={onCall} disabled={sealed}>叫下一号</button>
         </div>
         {err && <p className="err">{err}</p>}
         {msg && <p className="muted">{msg}</p>}
@@ -65,8 +68,8 @@ export default function Call() {
             <div className="no">{current.号牌}</div>
             <div className="meta">{current.业务种类} · {current.状态}</div>
             <div className="actions">
-              <button type="button" onClick={() => onFinish(current.id)}>办结</button>
-              <button type="button" className="ghost" onClick={() => onSkip(current.id)}>过号</button>
+              <button type="button" onClick={() => onFinish(current.id)} disabled={sealed}>办结</button>
+              <button type="button" className="ghost" onClick={() => onSkip(current.id)} disabled={sealed}>过号</button>
             </div>
           </div>
         )}

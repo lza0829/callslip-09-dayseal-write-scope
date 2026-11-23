@@ -5,7 +5,7 @@ from app.services.core import (
     kind_row,
     now,
     parse_kind_ids,
-    require_open_day,
+    require_writable_day,
     ticket_dict,
     ticket_row,
     window_row,
@@ -63,7 +63,7 @@ def waiting_wall(conn) -> dict:
 
 
 def take_ticket(conn, kind_id: int) -> dict:
-    day = require_open_day(conn)
+    day = require_writable_day(conn)  # 全日号牌写闸：六个写口同一闸
     kind = kind_row(conn, kind_id)
     if not kind["active"]:
         raise HTTPException(400, detail="该业务种类已停用")
@@ -87,7 +87,7 @@ def take_ticket(conn, kind_id: int) -> dict:
 
 
 def call_next(conn, window_id: int, kind_id: int | None = None) -> dict:
-    day = require_open_day(conn)
+    day = require_writable_day(conn)  # 全日号牌写闸：六个写口同一闸
     win = window_row(conn, window_id)
     if not win["open"]:
         raise HTTPException(400, detail="窗口已关闭")
@@ -130,7 +130,7 @@ def call_next(conn, window_id: int, kind_id: int | None = None) -> dict:
 
 
 def mark_skip(conn, ticket_id: int) -> dict:
-    day = require_open_day(conn)
+    day = require_writable_day(conn)  # 全日号牌写闸：六个写口同一闸
     row = ticket_row(conn, ticket_id)
     if row["business_day"] != day:
         raise HTTPException(400, detail="非当日号牌")
@@ -155,7 +155,7 @@ def mark_skip(conn, ticket_id: int) -> dict:
 
 
 def recall(conn, ticket_id: int, window_id: int | None = None) -> dict:
-    day = require_open_day(conn)
+    day = require_writable_day(conn)  # 全日号牌写闸：六个写口同一闸
     row = ticket_row(conn, ticket_id)
     if row["business_day"] != day:
         raise HTTPException(400, detail="非当日号牌")
@@ -186,7 +186,7 @@ def recall(conn, ticket_id: int, window_id: int | None = None) -> dict:
 
 
 def finish(conn, ticket_id: int) -> dict:
-    day = require_open_day(conn)
+    day = require_writable_day(conn)  # 全日号牌写闸：六个写口同一闸
     row = ticket_row(conn, ticket_id)
     if row["business_day"] != day:
         raise HTTPException(400, detail="非当日号牌")
@@ -211,7 +211,7 @@ def finish(conn, ticket_id: int) -> dict:
 
 
 def void_ticket(conn, ticket_id: int) -> dict:
-    day = require_open_day(conn)
+    day = require_writable_day(conn)  # 全日号牌写闸：六个写口同一闸
     row = ticket_row(conn, ticket_id)
     if row["business_day"] != day:
         raise HTTPException(400, detail="非当日号牌")

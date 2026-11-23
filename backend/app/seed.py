@@ -65,7 +65,4 @@ def seed_if_empty() -> None:
             ).fetchone()["c"]
             conn.execute("UPDATE business_kinds SET seq=? WHERE id=?", (mx, kid))
         conn.execute("INSERT INTO settings(key, value) VALUES ('营业日', ?)", (today,))
-        conn.execute(
-            "INSERT INTO day_seals(business_day, sealed, sealed_at, note) VALUES (?,0,NULL,?)",
-            (today, "当日未封口"),
-        )
+        # 新营业日无封口事件，写闸重放为「开」，无需落任何闸态行。

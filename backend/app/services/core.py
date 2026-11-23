@@ -3,6 +3,19 @@ from datetime import datetime
 from fastapi import HTTPException
 from app.config import TICKET_STATUSES
 
+# 封口事件动作（事件溯源：写闸判定只能由封口事件重放得出）
+SEAL_ACTION_SEAL = "封口"
+SEAL_ACTION_UNSEAL = "解封"
+
+# 全局唯一架构：全日号牌写闸。
+# 封口成功后，当日一切号牌写（发号/叫号/重叫/过号/办结/作废与号段游标推进）
+# 一律拒绝；只读总览与列表仍可用。全系统只贯彻这一口径，不得分叉。
+SEALED_WRITE_DETAIL = "当日已封口：全日号牌写闸关闭，禁止发号、叫号、过号、办结与号段游标推进"
+GATE_MODE = "全日号牌写闸"
+
+# 写闸覆盖的号牌写口（全部共用同一闸态，同开同关）
+WRITE_GATE_PORTS = ("发号", "叫号", "重叫", "过号", "办结", "作废", "游标推进")
+
 
 def now() -> str:
     return datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
@@ -17,18 +30,56 @@ def business_day(conn) -> str:
     return get_setting(conn, "营业日")
 
 
+def seal_events(conn, day: str) -> list:
+    """当日封口事件流（按 id 升序，即重放顺序）。"""
+    return conn.execute(
+        "SELECT * FROM day_seal_events WHERE business_day=? ORDER BY id", (day,)
+    ).fetchall()
+
+
+def replay_sealed(conn, day: str) -> bool:
+    """由封口事件重放闸态：逐条折叠，最后一条事件决定封口与否。"""
+    sealed = False
+    for e in seal_events(conn, day):
+        sealed = e["action"] == SEAL_ACTION_SEAL
+    return sealed
+
+
 def is_sealed(conn, day: str | None = None) -> bool:
-    d = day or business_day(conn)
-    row = conn.execute(
-        "SELECT sealed FROM day_seals WHERE business_day=?", (d,)
-    ).fetchone()
-    return bool(row and row["sealed"])
+    return replay_sealed(conn, day or business_day(conn))
 
 
-def require_open_day(conn) -> str:
+def append_seal_event(conn, day: str, action: str, note: str = "") -> str:
+    ts = now()
+    conn.execute(
+        "INSERT INTO day_seal_events(business_day, action, created_at, note) VALUES (?,?,?,?)",
+        (day, action, ts, note),
+    )
+    return ts
+
+
+def write_gate(conn, day: str | None = None) -> dict:
+    """全日号牌写闸的对外闸态：所有写口同开同关，由同一重放结果派生。
+
+    发号闸、叫号闸等各口闸态不得各自存储、各自判定——只能从这里取，
+    从根上保证封口事件、闸状态、各写口、总览封口态同刷一致。
+    """
+    state = "关" if is_sealed(conn, day) else "开"
+    gate = {"口径": GATE_MODE}
+    for port in WRITE_GATE_PORTS:
+        gate[port] = state
+    return gate
+
+
+def require_writable_day(conn) -> str:
+    """号牌写口唯一入口闸：发号/叫号/重叫/过号/办结/作废与游标推进共用。
+
+    必须在写事务（db(immediate=True)）内调用，使闸判定与后续写语句
+    处于同一串行事务，并发封口无法插入半截写。
+    """
     day = business_day(conn)
     if is_sealed(conn, day):
-        raise HTTPException(400, detail="当日队列已封口，禁止取号与叫号")
+        raise HTTPException(400, detail=SEALED_WRITE_DETAIL)
     return day
 
 
